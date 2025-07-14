@@ -1,11 +1,11 @@
 import mongoose, { Schema, Document } from "mongoose";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
+// import { z } from "zod";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   email: string;
-  password: string;
+  password?: string;
   firstName?: string;
   lastName?: string;
   image?: string;
@@ -26,7 +26,7 @@ export interface IUser extends Document {
 const userSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
     firstName: String,
     lastName: String,
     image: String,
@@ -44,39 +44,25 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-//  Pre-save hash hook
+// Pre-save hash hook
 userSchema.pre<IUser>("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  // Only hash if password exists AND it's modified
+  if (this.password && this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
   next();
 });
 
-//  Compare password method
+// Compare password method
 userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  // If the user doesn't have a password set (e.g., Google sign-up),
+  // they cannot compare a candidate password.
+  if (!this.password) {
+    return false;
+  }
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 export default mongoose.model<IUser>("User", userSchema);
-
-//  Zod Validation Schemas
-export const userRegisterSchema = z.object({
-  email: z.string().email({ message: "Invalid email address" }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters" }),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  address: z.string().optional(),
-  phone: z.string().optional(),
-  image: z.string().url().optional(),
-  role: z.enum(["admin", "seller", "user"]).optional(),
-});
-
-export const userLoginSchema = z.object({
-  email: z.string().email({ message: "Invalid email" }),
-  password: z.string().min(1, { message: "Password is required" }),
-});
-
-export const userUpdateSchema = userRegisterSchema.partial();

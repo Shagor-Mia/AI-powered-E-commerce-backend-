@@ -6,8 +6,9 @@ import dotenv from "dotenv";
 import dbConnection from "./database/connect";
 import authRouter from "./routes/auth.routes";
 import { globalErrorHandler } from "./middlewares/errors.middleware";
-import session from "express-session";
-import passport from "passport";
+import session from "express-session"; // Import express-session
+import passport from "passport"; // Import passport
+import "./config/passport";
 // import UserRouter from "./routes/user.route";
 // import CartRouter from "./routes/cart.route";
 // import OrderRouter from "./routes/order.route";
@@ -21,15 +22,18 @@ const app = express();
 
 app.use(morgan("dev"));
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// globalErrorHandler should typically be the last middleware before your routes,
+// or at least after all other processing that might throw an error.
+// For now, let's keep it here but consider its final placement.
 app.use(globalErrorHandler);
 
-app.use(passport.initialize());
-app.use(passport.session());
-
+// --- CORRECT ORDER FOR SESSION AND PASSPORT ---
+// 1. Session Middleware FIRST
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "some_secret_key",
+    secret: process.env.SESSION_SECRET || "some_secret_key", // Use a strong secret from .env
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -40,6 +44,11 @@ app.use(
     },
   })
 );
+
+// 2. Initialize Passport AFTER session
+app.use(passport.initialize());
+app.use(passport.session()); // This enables session support for Passport
+// --- END CORRECT ORDER ---
 
 app.use(
   cors({
@@ -54,6 +63,9 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRouter);
+// for google login
+app.use("/auth", authRouter);
+
 // app.use("/api/user", UserRouter);
 // app.use("/api/cart", CartRouter);
 // app.use("/api/order", OrderRouter);
