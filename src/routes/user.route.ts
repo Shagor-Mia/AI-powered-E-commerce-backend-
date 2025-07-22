@@ -5,7 +5,6 @@ import {
   updateUser,
   deleteUser,
 } from "../controllers/user.controller";
-// import { authMiddleware } from "../middlewares/auth.middleware";
 import { roleMiddleware } from "../middlewares/role.middleware";
 import { UserRole } from "../constants/enum";
 import { authMiddleware } from "../middlewares/auth.middlware";
